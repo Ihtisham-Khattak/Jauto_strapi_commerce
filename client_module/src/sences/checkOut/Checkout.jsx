@@ -1,4 +1,3 @@
-
 //#:#&:##
 
 import React, { useState } from "react";
@@ -11,6 +10,14 @@ import { shades } from "../../themes";
 import { Box, Button, Stepper, Step, StepLabel } from "@mui/material";
 import Shipping from "./Shipping";
 import Payment from "./Payment";
+
+//1. Stripe Functionality
+import { loadStripe } from "@stripe/stripe-js";
+
+//2 Stripe promise
+const stripePromise = loadStripe(
+  "pk_test_51MEPlMKuOJtWkZGYY7rNBYiuJGwZ6Y7M2NRCLzyh4HEvpJj8ujg2o7tKgDNmOpM62sHkx0UIZxWKsMh1fZj16Vrl00epG8FdQQ"
+);
 
 //Form initial value
 const initialValues = {
@@ -101,8 +108,6 @@ const checkOutScheme = [
   }),
 ];
 
-
-
 const Checkout = () => {
   const [activeStep, setActiveStep] = useState(0);
   const cart = useSelector((state) => state.cart.cart);
@@ -128,7 +133,31 @@ const Checkout = () => {
     actions.setTouched({});
   };
 
-  async function makePayment(value) {}
+//3. Make Payment through Stipe 
+  async function makePayment(value) {
+    const stripe = await stripePromise;
+    const requestedBody = {
+      userName: [value.firstName, value.lastName].join(" "),
+      email: value.email,
+      products: cart.map(({ id, count }) => ({
+        id,
+        count,
+      })),
+    };
+
+    const response = await fetch('http://localhost:1337/api/orders', {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(requestedBody)
+    });
+
+//4. Stripe session checkout
+    const session = await response.json();
+    await stripe.redirectToCheckOut({
+      sessionId: session.id
+    })
+
+  }
 
   return (
     <>
@@ -160,7 +189,6 @@ const Checkout = () => {
             setFieldValue,
           }) => (
             <form onSubmit={handleChange}>
-
               {/* Shipping Step */}
               {isFirstStep && (
                 <Shipping
